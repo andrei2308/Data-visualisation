@@ -1,0 +1,120 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D3 Bar Chart with GDP Data</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        #chart {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        #title {
+            text-align: center;
+            font-size: 24px;
+            margin-top: 20px;
+        }
+
+        .bar {
+            fill: steelblue;
+        }
+
+        #tooltip {
+            position: absolute;
+            background-color: lightsteelblue;
+            padding: 8px;
+            border: 1px solid gray;
+            border-radius: 5px;
+            pointer-events: none;
+            visibility: hidden;
+            font-size: 12px;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <h1 id="title">United States GDP</h1>
+    <div id="chart"></div>
+    <div id="tooltip"></div>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script>
+        const width = 800;
+        const height = 400;
+        const margin = { top: 40, right: 40, bottom: 40, left: 60 };
+
+        const svg = d3.select('#chart')
+            .append('svg')
+            .attr('width', width + margin.left + margin.right)
+            .attr('height', height + margin.top + margin.bottom)
+            .append('g')
+            .attr('transform', `translate(${margin.left}, ${margin.top})`);
+        d3.json('https://raw.githubusercontent.com/freeCodeCamp/ProjectReferenceData/master/GDP-data.json')
+            .then(data => {
+                const dataset = data.data;
+                const parseDate = d3.timeParse("%Y-%m-%d");
+                const xScale = d3.scaleTime()
+                    .domain([d3.min(dataset, d => parseDate(d[0])), d3.max(dataset, d => parseDate(d[0]))])
+                    .range([0, width]);
+                const yScale = d3.scaleLinear()
+                    .domain([0, d3.max(dataset, d => d[1])])
+                    .range([height, 0]);
+
+                const xAxis = d3.axisBottom(xScale);
+                svg.append('g')
+                    .attr('id', 'x-axis')
+                    .attr('transform', `translate(0, ${height})`)
+                    .call(xAxis);
+
+                const yAxis = d3.axisLeft(yScale);
+                svg.append('g')
+                    .attr('id', 'y-axis')
+                    .call(yAxis);
+
+                svg.selectAll('.bar')
+                    .data(dataset)
+                    .enter()
+                    .append('rect')
+                    .attr('class', 'bar')
+                    .attr('x', d => xScale(parseDate(d[0])))
+                    .attr('y', d => yScale(d[1]))
+                    .attr('width', width / dataset.length - 1)
+                    .attr('height', d => height - yScale(d[1]))
+                    .attr('data-date', d => d[0])
+                    .attr('data-gdp', d => d[1]);
+                const tooltip = d3.select('#tooltip');
+
+                svg.selectAll('.bar')
+                    .on('mouseover', (event, d) => {
+                        tooltip.style('visibility', 'visible')
+                            .attr("data-date", d[0])
+                            .html(`Date: ${d[0]}<br>GDP: $${d[1].toLocaleString()}`)
+                            .style('top', (event.pageY - 30) + 'px')
+                            .style('left', (event.pageX + 10) + 'px');
+                    })
+                    .on('mousemove', (event) => {
+                        tooltip.style('top', (event.pageY - 30) + 'px')
+                            .style('left', (event.pageX + 10) + 'px');
+                    })
+                    .on('mouseout', () => {
+                        tooltip.style('visibility', 'hidden');
+                    });
+            })
+            .catch(error => {
+                console.error('Error loading the data:', error);
+                d3.select('#chart').append('text')
+                    .attr('x', width / 2)
+                    .attr('y', height / 2)
+                    .attr('text-anchor', 'middle')
+                    .text('Failed to load data');
+            });
+    </script>
+</body>
+
+</html>

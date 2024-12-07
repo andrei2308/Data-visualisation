@@ -1,0 +1,112 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scatter Plot</title>
+</head>
+
+<body>
+    <h1 id="title">Scatter Plot</h1>
+    <div id="chart"></div>
+    <div id="tooltip"
+        style="position: absolute; opacity: 0; background-color: lightgrey; padding: 5px; border-radius: 5px;"></div>
+    <div id="legend"></div>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <script>
+        const margin = { top: 20, right: 30, bottom: 40, left: 60 };
+        const width = 800 - margin.left - margin.right;
+        const height = 400 - margin.top - margin.bottom;
+        const svg = d3.select('#chart')
+            .append('svg')
+            .attr('width', width + margin.left + margin.right)
+            .attr('height', height + margin.top + margin.bottom)
+            .append('g')
+            .attr('transform', `translate(${margin.left},${margin.top})`); d3.json("https://raw.githubusercontent.com/freeCodeCamp/ProjectReferenceData/master/cyclist-data.json")
+                .then(data => {
+                    const dataset = data;
+                    const xScale = d3.scaleTime()
+                        .domain([d3.min(dataset, d => new Date(d.Year, 0)), d3.max(dataset, d => new Date(d.Year, 0))])
+                        .range([0, width]);
+                    const parseTime = d3.timeParse("%M:%S");
+                    const yScale = d3.scaleTime()
+                        .domain([d3.max(dataset, d => parseTime(d.Time)), d3.min(dataset, d => parseTime(d.Time))])
+                        .range([height, 0]);
+                    const xAxis = d3.axisBottom(xScale).tickFormat(d3.timeFormat("%Y"));
+                    svg.append('g')
+                        .attr("id", "x-axis")
+                        .attr("transform", `translate(0,${height})`)
+                        .call(xAxis);
+                    const yAxis = d3.axisLeft(yScale).tickFormat(d3.timeFormat("%M:%S"));
+                    svg.append('g')
+                        .attr("id", "y-axis")
+                        .call(yAxis);
+                    const tooltip = d3.select("#tooltip");
+                    svg.selectAll("circle")
+                        .data(dataset)
+                        .enter()
+                        .append("circle")
+                        .attr("data-xvalue", d => new Date(d.Year, 0))
+                        .attr("data-yvalue", d => parseTime(d.Time))
+                        .attr("cx", d => xScale(new Date(d.Year, 0)))
+                        .attr("cy", d => yScale(parseTime(d.Time)))
+                        .attr("r", 6)
+                        .attr("class", "dot")
+                        .style("fill", d => d.Doping ? "red" : "green")
+                        .style("stroke", "black")
+                        .on("mouseover", function (event, d) {
+                            tooltip.style("opacity", 1)
+                                .html(`${d.Name}: ${d.Nationality}<br>Year: ${d.Year}, Time: ${d.Time}`)
+                                .style("left", (event.pageX + 10) + "px")
+                                .style("top", (event.pageY - 28) + "px").attr("data-year", new Date(d.Year, 0))
+                            d3.select(this).attr("r", 10);
+                        })
+                        .on("mouseout", function () {
+                            tooltip.style("opacity", 0);
+                            d3.select(this).attr("r", 6);
+                        });
+                    svg.append("text")
+                        .attr("x", width / 2)
+                        .attr("y", height + margin.bottom)
+                        .attr("text-anchor", "middle")
+                        .text("Year");
+
+                    svg.append("text")
+                        .attr("transform", "rotate(-90)")
+                        .attr("x", -height / 2)
+                        .attr("y", -margin.left + 20)
+                        .attr("text-anchor", "middle")
+                        .text("Time (MM:SS)");
+                });
+        const legend = d3.select('#legend')
+            .append('svg')
+            .attr('width', 200)
+            .attr('height', 100);
+        legend.append('circle')
+            .attr('cx', 10)
+            .attr('cy', 20)
+            .attr('r', 6)
+            .style('fill', 'green')
+            .style('stroke', 'black');
+        legend.append('text')
+            .attr('x', 30)
+            .attr('y', 25)
+            .text('No Doping Allegations')
+            .style('font-size', '12px')
+            .attr('alignment-baseline', 'middle');
+        legend.append('circle')
+            .attr('cx', 10)
+            .attr('cy', 50)
+            .attr('r', 6)
+            .style('fill', 'red')
+            .style('stroke', 'black');
+        legend.append('text')
+            .attr('x', 30)
+            .attr('y', 55)
+            .text('Doping Allegations')
+            .style('font-size', '12px')
+            .attr('alignment-baseline', 'middle');
+    </script>
+</body>
+
+</html>

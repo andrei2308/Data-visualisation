@@ -1,0 +1,95 @@
+<body>
+    <h1 id="title">Choropleth map</h1>
+    <p id="description">This map shows educational attainment (bachelor's degree or higher) across counties in the
+        United States.</p>
+    <svg width="960" height="600"></svg>
+    <div id="tooltip"
+        style="position: absolute; visibility: hidden; background-color: white; padding: 5px; border: 1px solid black; border-radius: 5px;">
+    </div>
+    <script src="https://d3js.org/d3.v6.js"></script>
+    <script src="https://unpkg.com/topojson@3"></script>
+
+    <script>
+        const svg = d3.select("svg"),
+            width = +svg.attr("width"),
+            height = +svg.attr("height");
+
+        const path = d3.geoPath();
+        const projection = d3.geoMercator()
+            .scale(70)
+            .center([0, 20])
+            .translate([width / 2, height / 2]);
+
+        const colorScale = d3.scaleThreshold()
+            .domain([3, 12, 21, 30, 39, 48])
+            .range(d3.schemeBlues[7]);
+        const tooltip = d3.select("#tooltip");
+
+        Promise.all([
+            d3.json("https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/counties.json"),
+            d3.json("https://cdn.freecodecamp.org/testable-projects-fcc/data/choropleth_map/for_user_education.json")
+        ]).then(([us, educationData]) => {
+            const educationMap = new Map(educationData.map(d => [d.fips, d.bachelorsOrHigher]));
+            const counties = topojson.feature(us, us.objects.counties).features;
+
+            svg.append("g")
+                .selectAll("path")
+                .data(counties)
+                .enter().append("path")
+                .attr("class", "county")
+                .attr("d", path)
+                .attr("fill", d => {
+                    const education = educationMap.get(d.id);
+                    return education ? colorScale(education) : "#ccc";
+                })
+                .attr("stroke", "#333")
+                .attr("data-fips", d => d.id)
+                .attr("data-education", d => educationMap.get(d.id))
+                .on("mouseover", function (event, d) {
+                    const education = educationMap.get(d.id);
+
+                    tooltip.style("visibility", "visible")
+                        .html(`FIPS: ${d.id}<br>Education: ${education ? education + "%" : "N/A"}`)
+                        .attr("data-education", education);
+
+                    d3.select(this)
+                        .attr("stroke", "black")
+                        .attr("stroke-width", "2px");
+                })
+                .on("mousemove", function (event) {
+                    tooltip.style("top", (event.pageY - 50) + "px")
+                        .style("left", (event.pageX + 10) + "px");
+                })
+                .on("mouseout", function () {
+                    tooltip.style("visibility", "hidden");
+
+                    d3.select(this)
+                        .attr("stroke", "#333")
+                        .attr("stroke-width", "1px");
+                });
+            const legend = svg.append("g")
+                .attr("id", "legend")
+                .attr("transform", `translate(${width - 140}, ${height - 150})`);
+
+            const legendColors = colorScale.range().slice(2, 6);
+            const legendLabels = ["< 12%", "12% - 21%", "21% - 30%", "> 30%"];
+
+            legend.selectAll("rect")
+                .data(legendColors)
+                .enter().append("rect")
+                .attr("x", 0)
+                .attr("y", (d, i) => i * 25)
+                .attr("width", 20)
+                .attr("height", 20)
+                .attr("fill", d => d);
+
+            legend.selectAll("text")
+                .data(legendLabels)
+                .enter().append("text")
+                .attr("x", 30)
+                .attr("y", (d, i) => i * 25 + 15)
+                .text(d => d)
+                .style("font-size", "12px");
+        });
+    </script>
+</body>
